@@ -2,46 +2,45 @@ use std::fs::File;
 use std::io::{ErrorKind, Write};
 use u32;
 
-//struct Canvas {
-//    height: usize,
-//    width: usize,
-//}
+pub struct Canvas {
+    pub height: usize,
+    pub width: usize,
+}
 
-//const WIDTH: usize = 800;
-//const HEIGHT: usize = 600;
-//const CANVAS: Canvas = Canvas {
-//    width: WIDTH,
-//    height: HEIGHT,
-//};
+pub struct Circle {
+   pub center_x: usize,
+   pub center_y: usize,
+   pub radius: usize,
+}
 
+pub struct Rectangle {
+   pub x0: usize,
+   pub y0: usize,
+   pub width: usize,
+   pub height: usize,
+}
 
-// signature: pixels?, color, width, height
-pub fn fill(color: u32, width: usize, height: usize) -> Vec<u32> {
-    let mut pixels = vec![0; width * height];
-    for i in 0..width * height {
+pub fn fill(color: u32, canvas: &Canvas) -> Vec<u32> {
+    let mut pixels = vec![0; canvas.width * canvas.height];
+    for i in 0..canvas.width * canvas.height {
         pixels[i] = color;
     }
     pixels
 }
 
-// signature: pixels, color, width, height, x0, y0, pw, ph
 pub fn fill_rectangle(
     mut pixels: Vec<u32>,
     color: u32,
-    width: u32,
-    height: u32,
-    x0: u32,
-    y0: u32,
-    rectangle_width: u32,
-    rectengle_height: u32,
+    canvas: &Canvas,
+    rectangle: Rectangle,
 ) -> Vec<u32> {
-    for dy in 0..height {
-        let y = y0 + dy;
-        if 0 < y && y < rectengle_height {
-            for dx in 0..width {
-                let x = x0 + dx;
-                if 0 < x && x < rectangle_width {
-                    pixels.insert((y * rectangle_width).try_into().unwrap(), color);
+    for dy in 0..canvas.height {
+        let y = rectangle.y0 + dy;
+        if 0 < y && y < rectangle.height {
+            for dx in 0..canvas.width {
+                let x = rectangle.x0 + dx;
+                if 0 < x && x < rectangle.width {
+                    pixels.insert((y * rectangle.width).try_into().unwrap(), color);
                 }
             }
         }
@@ -49,7 +48,31 @@ pub fn fill_rectangle(
     pixels
 }
 
-pub fn save_to_ppm(pixels: Vec<u32>, filepath: String, width: usize, height: usize) {
+pub fn fill_circle(mut pixels: Vec<u32>, color: u32, canvas: &Canvas, circle: Circle) -> Vec<u32> {
+    let x1: i32 = circle.center_x as i32 - circle.radius as i32;
+    let y1: i32 = circle.center_y as i32 - circle.radius as i32;
+    let x2: i32 = circle.center_x as i32 + circle.radius as i32;
+    let y2: i32 = circle.center_y as i32 + circle.radius as i32;
+
+    for y in y1..y2 {
+        if 0 < y && y < canvas.height as i32 {
+            for x in x1..x2 {
+                if 0 < x && x < canvas.width as i32 {
+                    let dx = x - circle.center_x as i32;
+                    let dy = y - circle.center_y as i32;
+                    // this produces square
+                    //if f64::sqrt((dx*dx + dy*dy) as f64) <= circle.radius as f64 *circle.radius as f64 {
+                    if (dx*dx + dy*dy) <= circle.radius as i32 *circle.radius as i32 {
+                        pixels.insert(y as usize * canvas.width + x as usize, color);
+                    }
+                }
+            }
+        }
+    }
+    pixels
+}
+
+pub fn save_to_ppm(pixels: Vec<u32>, filepath: String, canvas: &Canvas) {
     let mut image_file = match File::create(&filepath) {
         Ok(file) => file,
         Err(error) => match error.kind() {
@@ -63,7 +86,7 @@ pub fn save_to_ppm(pixels: Vec<u32>, filepath: String, width: usize, height: usi
         },
     };
 
-    match write!(image_file, "P6\n{} {} 255\n", width, height) {
+    match write!(image_file, "P6\n{} {} 255\n", canvas.width, canvas.height) {
         Ok(w) => w,
         Err(e) => panic!("Problem writing to file: {:?}", e),
     };
